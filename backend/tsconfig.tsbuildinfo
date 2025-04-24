@@ -1,0 +1,1 @@
+{"root":["./src/index.ts","./src/config/redisadapter.ts","./src/db/src/client.ts","./src/routes/events.ts","./src/routes/rooms.ts","./src/routes/snapshots.ts","./src/sockets/canvas.ts"],"version":"5.8.2"}
