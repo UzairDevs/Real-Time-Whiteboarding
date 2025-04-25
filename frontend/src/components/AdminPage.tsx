@@ -11,7 +11,7 @@ export default function AdminPage() {
   useEffect(() => {
     async function getCode() {
       try {
-        const res = await fetch("http://localhost:3000/rooms", {
+        const res = await fetch("http://54.204.98.222:3000/rooms", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

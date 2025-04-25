@@ -12,7 +12,7 @@ import {
 import io, { Socket } from 'socket.io-client';
 import CanvasToolbar from '../components/CanvasToolBar';
 
-const SOCKET_URL = 'http://localhost:3000';
+const SOCKET_URL = 'http://54.204.98.222:3000';
 
 type Tool = 'free' | 'select' | 'rectangle' | 'circle' | 'kite' | 'text' | 'undo' | 'redo' | 'arrow' | 'eraser';
 
