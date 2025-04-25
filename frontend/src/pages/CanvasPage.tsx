@@ -37,7 +37,14 @@ export default function CanvasPage() {
   const [step, setStep] = useState(0);
   const [isTextEditing, setIsTextEditing] = useState(false);
   const [textPosition, setTextPosition] = useState({ x: 0, y: 0 });
+  const [textScreenPosition, setTextScreenPosition] = useState({ x: 0, y: 0 });
   const [textValue, setTextValue] = useState('');
+  
+  // Responsive stage size
+  const [stageSize, setStageSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight - 50, // Subtracting toolbar height
+  });
   
   // Recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -92,6 +99,21 @@ export default function CanvasPage() {
     return () => { socket.disconnect(); };
   }, []);
 
+  // Handle window resizing for responsive canvas
+  useEffect(() => {
+    const handleResize = () => {
+      setStageSize({
+        width: window.innerWidth,
+        height: window.innerHeight - 50, // Subtracting toolbar height
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
   // Clean up when component unmounts (for recording)
   useEffect(() => {
     return () => {
@@ -117,16 +139,16 @@ export default function CanvasPage() {
     };
   }, [videoUrl]);
 
-  // Handle recording state changes
+  
   useEffect(() => {
-    // When recording starts, set up an interval to force canvas redraws
+   
     if (isRecording && stageRef.current) {
-      // Clear any existing interval
+      
       if (redrawIntervalRef.current !== null) {
         clearInterval(redrawIntervalRef.current);
       }
       
-      // Create a new interval to force redraws
+      
       redrawIntervalRef.current = window.setInterval(() => {
         if (stageRef.current) {
           const stage = stageRef.current.getStage();
@@ -146,7 +168,6 @@ export default function CanvasPage() {
   useEffect(() => {
     if (isTextEditing && textInputRef.current) {
       textInputRef.current.focus();
-      textInputRef.current.select();// ADDDED THIS.
     }
   }, [isTextEditing]);
 
@@ -196,7 +217,7 @@ export default function CanvasPage() {
       setIsTextEditing(false);
       return;
     }
-
+    
     const newText: Shape = {
       id: currentId.current,
       type: 'text',
@@ -205,7 +226,9 @@ export default function CanvasPage() {
       text: textValue,
       color,
     };
-
+    
+    console.log("Adding text at position:", { x: textPosition.x, y: textPosition.y });
+    
     setShapes(prev => {
       const updated = [...prev, newText];
       pushHistory(updated);
@@ -218,10 +241,10 @@ export default function CanvasPage() {
         shape: newText,
         shapeId: newText.id,
       });
-
+      
       return updated;
     });
-
+    
     setIsTextEditing(false);
     setTextValue('');
   };
@@ -272,7 +295,7 @@ export default function CanvasPage() {
         }
       };
       
-      // Handle recording stop
+      
       mediaRecorder.onstop = () => {
         if (chunksRef.current.length === 0) {
           console.error("No data was captured during recording");
@@ -340,10 +363,35 @@ export default function CanvasPage() {
     currentId.current = `${Date.now()}`;
 
     if (tool === 'text') {
-      setTextPosition({ 
-        x: pos.x, 
-        y: pos.y 
+     
+      const stage = stageRef.current.getStage();
+      const container = stage.container();
+      const containerRect = container.getBoundingClientRect();
+      
+      // Get pointer position in canvas coordinates
+      const pos = stage.getPointerPosition();
+      if (!pos) return;
+      
+      // Calculate absolute position within the viewport (screen coordinates)
+      // This fixes the issue where text appears at wrong position
+      const screenX = pos.x;
+      const screenY = pos.y;
+      
+      console.log("Text tool: Canvas coordinates:", pos);
+      console.log("Text tool: Screen coordinates for input:", { x: screenX, y: screenY });
+      
+      // Store canvas position for later use when creating the shape
+      setTextPosition({
+        x: pos.x,
+        y: pos.y
       });
+      
+      // Store screen position for input positioning
+      setTextScreenPosition({
+        x: screenX,
+        y: screenY
+      });
+      
       setIsTextEditing(true);
       setTextValue('');
       return;
@@ -448,7 +496,18 @@ export default function CanvasPage() {
       case 'kite':
         return <RegularPolygon key={s.id} x={s.x} y={s.y} sides={4} radius={s.radius!} stroke={s.color} />;
       case 'text':
-        return <Text key={s.id} x={s.x} y={s.y} text={s.text} fontSize={24} fill={s.color} />;
+        return (
+          <Text 
+            key={s.id} 
+            x={s.x} 
+            y={s.y} 
+            text={s.text} 
+            fontSize={24} 
+            fill={s.color} 
+            align="center"
+            verticalAlign="middle"
+          />
+        );
       case 'arrow':
         return (
           <Arrow
@@ -494,8 +553,8 @@ export default function CanvasPage() {
       
       <div className="flex-1 relative">
         <Stage
-          width={window.innerWidth}
-          height={window.innerHeight - 50}
+          width={stageSize.width}
+          height={stageSize.height}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -506,34 +565,54 @@ export default function CanvasPage() {
           </Layer>
         </Stage>
         
+        {/* Text input overlay */}
         {isTextEditing && (
-          <input
-            ref={textInputRef}
-            type="text"
-            value={textValue}
+          <div
             style={{
               position: 'absolute',
-              left: `${textPosition.x}px`,
-              top: `${textPosition.y}px`,
-              fontSize: '24px',
-              border: 'none',
-              outline: 'none',
-              background: 'transparent',
-              color: color,
-              fontFamily: 'Arial, sans-serif',
-              transform: 'translateY(-50%)',//added this.
-              zIndex: 100,
-              pointerEvents: 'auto'
+              left: 0,
+              top: 0,
+              right: 0,
+              bottom: 0,
+              pointerEvents: 'none',
+              zIndex: 20
             }}
-            
-            onChange={(e) => setTextValue(e.target.value)}
-            onBlur={handleTextComplete}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleTextComplete();
-              }
-            }}
-          />
+          >
+            <input
+              ref={textInputRef}
+              type="text"
+              value={textValue}
+              style={{
+                position: 'absolute',
+                left: `${textPosition.x}px`,
+                top: `${textPosition.y}px`,
+                width: 'auto',
+                minWidth: '100px',
+                fontSize: '24px',
+                border: '1px dashed ' + color,
+                outline: 'none',
+                background: 'rgba(255, 255, 255, 0.7)',
+                color: color,
+                fontFamily: 'Arial, sans-serif',
+                transform: 'translate(-50%, -50%)',
+                padding: '2px 8px',
+                textAlign: 'center',
+                pointerEvents: 'auto',
+                zIndex: 100,
+              }}
+              placeholder="Type here..."
+              onChange={(e) => setTextValue(e.target.value)}
+              onBlur={handleTextComplete}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleTextComplete();
+                } else if (e.key === 'Escape') {
+                  setIsTextEditing(false);
+                  setTextValue('');
+                }
+              }}
+            />
+          </div>
         )}
         
         {/* Video preview for completed recordings */}

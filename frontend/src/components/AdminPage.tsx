@@ -17,7 +17,7 @@ export default function AdminPage() {
           body: JSON.stringify({
             allowDraw: true,
             recording: true,
-            adminId: "admin123", // <-- replace with actual adminId if needed
+            adminId: "admin123", 
           }),
         });
 

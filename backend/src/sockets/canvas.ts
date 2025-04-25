@@ -25,7 +25,7 @@ export default function registerCanvasHandlers(io: Server) {
         console.log(`User ${userId} joined room ${roomCode}`);
         socket.emit('room-config', room);
 
-        // TODO: emit snapshot + historical events if recording was enabled
+        
       } catch (err) {
         console.error('Join room error:', err);
         socket.emit('error', 'Failed to join room');
@@ -46,7 +46,7 @@ export default function registerCanvasHandlers(io: Server) {
           return;
         }
 
-        // Check permissions
+        
         if (!room.allowDraw && senderId !== room.adminId) {
             console.log("permission denied!")
             return;
@@ -64,7 +64,7 @@ export default function registerCanvasHandlers(io: Server) {
           });
         }
 
-        // Broadcast to everyone else in the room
+        // I need to Broadcast to everyone else in the room
         console.log("broadcasting the event", event)
         io.to(roomCode).emit('canvas: event', event);
       } catch (err) {

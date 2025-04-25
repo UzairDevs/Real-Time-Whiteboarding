@@ -5,7 +5,7 @@ interface Props {
   onToolChange: (tool: Tool) => void;
   color: string;
   onColorChange: (color: string) => void;
-  // Add the missing props that are being passed from CanvasPage
+ 
   isRecording: boolean;
   onStartRecording: () => void;
   onStopRecording: () => void;

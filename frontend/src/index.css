@@ -57,6 +57,3 @@ html {
   scroll-behavior: smooth;
 }
 
-.konvajs-content {
-  transform: translateZ(0);
-}
