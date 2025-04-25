@@ -23,7 +23,7 @@ const RoomJoin = () => {
   const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
-    const socketConnection: Socket<ServerToClientEvents, ClientToServerEvents> = io("http://localhost:3000");
+    const socketConnection: Socket<ServerToClientEvents, ClientToServerEvents> = io("http://54.204.98.222:3000");
     setSocket(socketConnection);
 
     socketConnection.on("connect", () => {
