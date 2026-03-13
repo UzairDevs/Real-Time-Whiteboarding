@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   Stage, 
   Layer, 
@@ -12,7 +13,7 @@ import {
 import io, { Socket } from 'socket.io-client';
 import CanvasToolbar from '../components/CanvasToolBar';
 
-const SOCKET_URL = 'http://54.204.98.222:3000';
+const SOCKET_URL = 'http://localhost:3000';
 
 type Tool = 'free' | 'select' | 'rectangle' | 'circle' | 'kite' | 'text' | 'undo' | 'redo' | 'arrow' | 'eraser';
 
@@ -59,45 +60,49 @@ export default function CanvasPage() {
   const currentId = useRef<string>('');
   const textInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const roomCode = "BBB8AD";
-  const userId = "aa";
+  const location = useLocation();
+  const { roomCode, userId } = (location.state as { roomCode: string; userId: string; isAdmin?: boolean }) ?? { roomCode: '', userId: '' };
 
   // Initialize socket
   useEffect(() => {
+    if (!roomCode || !userId) return; // don't connect until we have room info
+
     const socket = io(SOCKET_URL);
     socketRef.current = socket;
+
     socket.on("connect", () => {
       socket.emit("join-room", { roomCode, userId });
-      console.log("Connected and joined room");
+      console.log("Connected and joined room", roomCode, "as", userId);
+    });
 
-      socket.on('canvas: event', (event: any) => {
-        console.log("Canvas event received", event);
-        const { type, shape, shapeId } = event;
-        
-        const applyRemoteUndo = (shapeId: string) => {
-          setShapes(prev => prev.filter(s => s.id !== shapeId));
-        };
-        
-        const applyRemoteRedo = (shape: Shape) => {
-          setShapes(prev => [...prev, shape]);
-        };
-        
-        if (type === 'add') {
-          setShapes(prev => {
-            const updated = [...prev, shape];
-            pushHistory(updated);
-            return updated;
-          });
-        } else if (type === 'undo') {
-          applyRemoteUndo(shapeId);
-        } else if (type === 'redo') {
-          applyRemoteRedo(shape);
-        }
-      });
+    // Register canvas event listener ONCE, outside connect handler
+    socket.on('canvas: event', (event: any) => {
+      const { type, shape, shapeId, senderId } = event;
+
+      // Skip events we sent ourselves (server broadcasts back to sender too)
+      if (senderId === userId) return;
+
+      console.log("Canvas event received from", senderId, type);
+
+      if (type === 'add') {
+        setShapes(prev => {
+          // Avoid adding duplicates
+          if (prev.find(s => s.id === shape.id)) return prev;
+          const updated = [...prev, shape];
+          return updated;
+        });
+      } else if (type === 'undo') {
+        setShapes(prev => prev.filter(s => s.id !== shapeId));
+      } else if (type === 'redo') {
+        setShapes(prev => {
+          if (prev.find(s => s.id === shape.id)) return prev;
+          return [...prev, shape];
+        });
+      }
     });
 
     return () => { socket.disconnect(); };
-  }, []);
+  }, [roomCode, userId]);
 
   // Handle window resizing for responsive canvas
   useEffect(() => {
