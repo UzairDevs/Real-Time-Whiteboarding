@@ -34,12 +34,13 @@ router.post ("/:code", async(req,res)=> {
             select: { code: true, allowDraw: true, recording: true, adminId: true }
         });
         if (!findRoom){
-            res.status(500).json({
+            res.status(404).json({
                 msg: "Unable to find the room"
             })
+            return;
         }
         //we need to create a ws connection and make user connect to the
-        
+
         res.status(200).json(findRoom)
     }catch (err){
         console.log(err);

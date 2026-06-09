@@ -12,8 +12,9 @@ import {
 } from 'react-konva';
 import io, { Socket } from 'socket.io-client';
 import CanvasToolbar from '../components/CanvasToolBar';
+import { API_URL } from '../config';
 
-const SOCKET_URL = 'http://localhost:3000';
+const SOCKET_URL = API_URL;
 
 type Tool = 'free' | 'select' | 'rectangle' | 'circle' | 'kite' | 'text' | 'undo' | 'redo' | 'arrow' | 'eraser';
 
@@ -38,7 +39,7 @@ export default function CanvasPage() {
   const [step, setStep] = useState(0);
   const [isTextEditing, setIsTextEditing] = useState(false);
   const [textPosition, setTextPosition] = useState({ x: 0, y: 0 });
-  const [textScreenPosition, setTextScreenPosition] = useState({ x: 0, y: 0 });
+  const [, setTextScreenPosition] = useState({ x: 0, y: 0 });
   const [textValue, setTextValue] = useState('');
   
   // Responsive stage size
@@ -370,9 +371,7 @@ export default function CanvasPage() {
     if (tool === 'text') {
      
       const stage = stageRef.current.getStage();
-      const container = stage.container();
-      const containerRect = container.getBoundingClientRect();
-      
+
       // Get pointer position in canvas coordinates
       const pos = stage.getPointerPosition();
       if (!pos) return;

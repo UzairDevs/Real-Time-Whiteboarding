@@ -1,0 +1,69 @@
+# Render Blueprint for the Real-Time Whiteboarding app.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# This provisions three services:
+#   1. whiteboard-backend  — Node/Express + socket.io API server
+#   2. whiteboard-redis     — Key Value (Redis) used by the socket.io adapter
+#   3. whiteboard-frontend  — the Vite/React static site
+#
+# DATABASE_URL is intentionally NOT defined here (sync: false) — set it in the
+# Render dashboard to your existing Neon connection string so the secret never
+# lands in git.
+
+services:
+  # ---------------------------------------------------------------------------
+  # Backend API + WebSocket server
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: whiteboard-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    # --include=dev forces devDependencies (prisma CLI, typescript) to install
+    # even though Render sets NODE_ENV=production during the build.
+    buildCommand: npm install --include=dev && npx prisma migrate deploy && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false # set this to your Neon URL in the dashboard
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: whiteboard-redis
+          property: connectionString
+      # Lock CORS to the frontend once it's deployed (optional; defaults to "*").
+      # e.g. https://whiteboard-frontend.onrender.com
+      - key: CORS_ORIGIN
+        sync: false
+
+  # ---------------------------------------------------------------------------
+  # Frontend static site
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: whiteboard-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      # Injected at build time; config.ts upgrades a bare host to https://.
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: whiteboard-backend
+          property: host
+    routes:
+      # SPA fallback so client-side routes (e.g. /canvas) don't 404 on refresh.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  # ---------------------------------------------------------------------------
+  # Key Value (Redis) for the socket.io adapter
+  # ---------------------------------------------------------------------------
+  - type: keyvalue
+    name: whiteboard-redis
+    plan: free
+    ipAllowList: [] # empty = only reachable from within your Render services
+    maxmemoryPolicy: noeviction

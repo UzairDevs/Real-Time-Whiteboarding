@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Sun, Moon } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
+import { API_URL } from "../config";
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -11,7 +12,7 @@ export default function AdminPage() {
   useEffect(() => {
     async function getCode() {
       try {
-        const res = await fetch("http://localhost:3000/rooms", {
+        const res = await fetch(`${API_URL}/rooms`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

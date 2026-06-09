@@ -17,15 +17,27 @@ const PORT = process.env.PORT
   : 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 
+// Comma-separated list of allowed origins, or "*" for any (default).
+// e.g. CORS_ORIGIN="https://whiteboard-frontend.onrender.com"
+const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
+const corsOrigins =
+  CORS_ORIGIN === '*' ? '*' : CORS_ORIGIN.split(',').map((s) => s.trim());
+
 const app = express();
 const server = http.createServer(app);
 
 //–– middleware & routers ––//
-app.use(cors());
+app.use(cors({ origin: corsOrigins }));
 app.use(express.json());
 
-// health check
+// health check (used by Render's health checks + uptime pings)
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime() });
+});
 
+app.get('/', (_req, res) => {
+  res.status(200).send('Whiteboard backend is running');
+});
 
 app.use('/rooms', roomsRouter);
 app.use('/rooms/:code/snapshot', snapshotsRouter);
@@ -33,17 +45,33 @@ app.use('/rooms/:code/events', eventsRouter);
 
 //–– socket & redis adapter ––//
 const io = new SocketIOServer(server, {
-  cors: { origin: '*', methods: ['GET','POST'] },
+  cors: { origin: corsOrigins, methods: ['GET', 'POST'] },
 });
 
-setupRedisAdapter(io)
-  .then(() => {
-    registerCanvasHandlers(io);
-    server.listen(PORT, HOST, () => {
-      console.log(`Server listening on http://${HOST}:${PORT}`);
-    });
-  })
-  .catch(err => {
-    console.error('Failed to connect Redis adapter:', err);
-    process.exit(1);
+async function start() {
+  const redisUrl = process.env.REDIS_URL;
+
+  // The Redis adapter is optional: it lets multiple backend instances share
+  // socket events. If it's not configured or unreachable we log and continue
+  // with a single instance rather than crashing the whole server.
+  if (redisUrl) {
+    try {
+      await setupRedisAdapter(io, redisUrl);
+    } catch (err) {
+      console.error(
+        'Redis adapter failed to connect — continuing without it (single instance):',
+        err
+      );
+    }
+  } else {
+    console.log('No REDIS_URL set — running without the Redis adapter.');
+  }
+
+  registerCanvasHandlers(io);
+
+  server.listen(PORT, HOST, () => {
+    console.log(`Server listening on http://${HOST}:${PORT}`);
   });
+}
+
+start();

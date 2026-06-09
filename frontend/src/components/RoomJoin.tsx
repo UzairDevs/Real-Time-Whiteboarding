@@ -3,6 +3,7 @@ import { io, Socket } from "socket.io-client";
 import { useTheme } from "../context/ThemeContext";
 import { ArrowLeft, Sun, Moon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { API_URL } from "../config";
 
 interface ServerToClientEvents {
   "room-config": (config: any) => void;
@@ -23,7 +24,7 @@ const RoomJoin = () => {
   const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
-    const socketConnection: Socket<ServerToClientEvents, ClientToServerEvents> = io("http://localhost:3000");
+    const socketConnection: Socket<ServerToClientEvents, ClientToServerEvents> = io(API_URL);
     setSocket(socketConnection);
 
     socketConnection.on("connect", () => {
@@ -66,7 +67,7 @@ const RoomJoin = () => {
     }
 
     try {
-      const res = await fetch(`http://localhost:3000/rooms/${roomCode}`, {
+      const res = await fetch(`${API_URL}/rooms/${roomCode}`, {
         method: "POST",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId })
